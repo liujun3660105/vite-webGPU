@@ -11,7 +11,7 @@ for(let file of samples){
         input[file.slice(0, -5)] = resolve(__dirname, 'samples/'+ file)
 }
 module.exports = defineConfig({
-    base: '/orillusion-webgpu-samples/',
+    base: '/vite-webgpu/',
     build: {
         rollupOptions: {
             input

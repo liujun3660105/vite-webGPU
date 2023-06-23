@@ -1,6 +1,6 @@
-import triangleVertex from "./shaders/cubesInstance.vert.wgsl?raw";
-import triangleFrag from "./shaders/cubesInstance.frag.wgsl?raw";
-import { vertex, vertexCount } from "./util/cube";
+import basicInstanced from "./shaders/basic.instanced.vert.wgsl?raw";
+import triangleFrag from "./shaders/basic.instanced.frag.wgsl?raw";
+import { vertex, vertexCount } from "./util/trangle";
 import { mat4, vec3 } from "gl-matrix";
 
 interface ModelView {
@@ -8,8 +8,6 @@ interface ModelView {
 	y: number;
 	z: number;
 }
-
-const intanceCount = 10000;// 几何体数量
 
 async function initWebGPU1(canvas: HTMLCanvasElement) {
 	console.log('navigator',navigator);
@@ -30,8 +28,7 @@ async function initWebGPU1(canvas: HTMLCanvasElement) {
 
 	const context = canvas.getContext("webgpu");
 	if (!context) throw new Error();
-	// const format = context.getPreferredFormat(adapter);
-	const format = navigator.gpu.getPreferredCanvasFormat();
+	const format = context.getPreferredFormat(adapter);
 	canvas.width = canvas.clientWidth * window.devicePixelRatio;
 	canvas.height = canvas.clientHeight * window.devicePixelRatio;
 	const size = {
@@ -53,22 +50,10 @@ async function initPipeline(
 	format: GPUTextureFormat,
 	size: { width: number; height: number }
 ) {
-	// const dynamicBindGroupLayout = device.createBindGroupLayout({
-	// 	entries:[
-	// 		{
-	// 			binding:0,
-	// 			visibility: GPUShaderStage.VERTEX,
-	// 			buffer:{
-	// 				type:'uniform',
-	// 				hasDynamicOffset:true,//是否支持动态切换
-	// 				minBindingSize:0
-	// 			}
-	// 		}
-	// 	]
-	// });
-	// const dynamicPipelineLayout = device.createPipelineLayout({
-	// 	bindGroupLayouts:[dynamicBindGroupLayout]
-	// });
+	console.log(
+		"🚀 ~ file: rotatingCube.ts ~ line 41 ~ initPipeline ~ size",
+		size
+	);
 	// const vertex = new Float32Array([
 	// 	0,0.5,0,
 	// 	-0.5,-0.5,0,
@@ -79,15 +64,15 @@ async function initPipeline(
 		usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 	});
 	device.queue.writeBuffer(vertexBuffer, 0, vertex); // GPUBUffer ,offset ,typedArray
-	const color = new Float32Array([1, 1, 0, 1]);
-	const colorBuffer = device.createBuffer({
-		size: color.byteLength,
-		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-	});
+	// const color = new Float32Array([1, 1, 0, 1]);
+	// const colorBuffer = device.createBuffer({
+	// 	size: color.byteLength,
+	// 	usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+	// });
 
-	device.queue.writeBuffer(colorBuffer, 0, color);
+	// device.queue.writeBuffer(colorBuffer, 0, color);
 	const vertexShader = device.createShaderModule({
-		code: triangleVertex,
+		code: basicInstanced,
 	});
 	const fragShader = device.createShaderModule({
 		code: triangleFrag,
@@ -98,9 +83,7 @@ async function initPipeline(
 		vertexCount,
 	};
 	const pipeline = await device.createRenderPipelineAsync({
-		label:'dynamicPipeline',
-		// layout: dynamicPipelineLayout,
-		layout:'auto',
+		layout: "auto",
 		// 这里整体标识传入的vertex buffer是以每12个字节划分为一个定点数据传入shader，每个节点中从0（shaderLocation）开始
 		// 3个flaot32的数字作为一个参数传入shader@location(0)这个位置
 		vertex: {
@@ -146,8 +129,8 @@ async function initPipeline(
 
 	const mvpMatrixBuffer = device.createBuffer({
 		label: "GPUBuffer store 4*4*4 matrix1",
-		size: 4*4*4*intanceCount, // 按照4*4*4紧密排列
-		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, //改成storage
+		size: 4*4*4*NUM,
+		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 	});
 
 
@@ -159,13 +142,25 @@ async function initPipeline(
 			{
 				binding: 0,
 				resource: {
-					// size:4*16,
-					offset:0,
 					buffer: mvpMatrixBuffer,
 				},
 			},
 		],
 	});
+	// const group2 = device.createBindGroup({
+	// 	label: 'Uniform Group with matrix2',
+	// 	layout: pipeline.getBindGroupLayout(0),
+	// 	entries: [
+	// 		{
+	// 			binding: 0,
+	// 			resource: {
+	// 				size:4*16,
+	// 				offset:256,
+	// 				buffer: mvpMatrixBuffer,
+	// 			},
+	// 		},
+	// 	],
+	// });
 
 	const depthTexture = device.createTexture({
 		size,
@@ -174,8 +169,8 @@ async function initPipeline(
 	});
 
 	const colorObj = {
-		color,
-		colorBuffer,
+		// color,
+		// colorBuffer,
 		group,
 		// group2,
 	};
@@ -184,7 +179,6 @@ async function initPipeline(
 		vertexObj,
 		colorObj,
 		mvpMatrixBuffer,
-		group,
 		// mvpMatrixBuffer2,
 		depthTexture,
 	};
@@ -236,8 +230,7 @@ function draw(
 	context: GPUCanvasContext,
 	vertexObj: any,
 	colorObj: any,
-	depthTexture: GPUTexture,
-	group:GPUBindGroup
+	depthTexture: GPUTexture
 ) {
 	const encoder = device.createCommandEncoder(); // 所有的命令都提前写入encoder中，然后再一次性提交native运行
 	const renderPass = encoder.beginRenderPass({
@@ -259,24 +252,19 @@ function draw(
 	});
 	renderPass.setPipeline(pipeline);
 	renderPass.setVertexBuffer(0, vertexObj.vertexBuffer);
-		renderPass.setBindGroup(0, group);
-		renderPass.draw(vertexObj.vertexCount,intanceCount); //定点个数 vertexShader会被并行执行三次
-
-
-	// const offset = new Uint32Array([0, 256])
-	// for(let i=0;i<200000;i++)
-	// {
-	// 	renderPass.setBindGroup(0, colorObj.group, [0])
-	// 	// renderPass.draw(vertexObj.vertexCount); //定点个数 vertexShader会被并行执行三次
-	// 	renderPass.setBindGroup(0, colorObj.group,[256]);
-	// 	// renderPass.draw(vertexObj.vertexCount); //定点个数 vertexShader会被并行执行三次
-	// }
-	renderPass.draw(vertexObj.vertexCount);
+	// for(let i=0;i<20000;i++)
+	{
+		renderPass.setBindGroup(0, colorObj.group);
+		renderPass.draw(vertexObj.vertexCount, NUM); //定点个数 vertexShader会被并行执行三次
+		// renderPass.setBindGroup(0, colorObj.group2);
+		// renderPass.draw(vertexObj.vertexCount); //定点个数 vertexShader会被并行执行三次
+	}
+	// renderPass.draw(vertexObj.vertexCount);
 	renderPass.end();
 	const buffer = encoder.finish();
 	device.queue.submit([buffer]); // 这时GPU才开始工作
 }
-
+const NUM = 500;
 async function run() {
 	const canvas = document.querySelector("canvas");
 	if (!canvas) throw new Error("No Canvas");
@@ -286,27 +274,24 @@ async function run() {
 		vertexObj,
 		colorObj,
 		mvpMatrixBuffer,
-		group,
 		// mvpMatrixBuffer2,
 		depthTexture,
 	} = await initPipeline(device, format, size);
-
-	const sceneList:any[] = [];
-	const mvpBuffer = new Float32Array(intanceCount * 4 * 4)
-
+	const scene:any[] = []
+	const mvpBuffer = new Float32Array(NUM * 4 * 4)
+	for(let i = 0; i < NUM; i++){
+		// craete simple object
+		const position = {x: Math.random() * 40 - 20, y: Math.random() * 40 - 20, z:  - 50 - Math.random() * 50}
+		const rotation = {x: 0, y: 0, z: 0}
+		const scale = {x:1, y:1, z:1}
+		scene.push({position, rotation, scale})
+}
 	// const position1 = { x: 2, y: 0, z: -8 };
 	// const rotation1 = { x: 0.5, y: 0, z: 0 };
 	// const scale1 = { x: 1, y: 1, z: 1 };
 	// const position2 = { x: -2, y: 0, z: -8 };
 	// const rotation2 = { x: 0.5, y: 0, z: 0 };
 	// const scale2 = { x: 1, y: 1, z: 1 };
-	for(let i=0;i<intanceCount;i++){
-		const position = {x: Math.random() * 40 - 20, y: Math.random() * 40 - 20, z:  - 50 - Math.random() * 50}
-		// const position = {x:0,y:0,z:-8}
-		const rotation = { x: 0, y: 0, z: 0 };
-		const scale = { x: 1, y: 1, z: 1 };
-		sceneList.push({position,rotation,scale});
-	}
 	// const mvpMatrix1 = getMvpMatrix(size, position1, rotation1, scale1);
 	// device.queue.writeBuffer(mvpMatrixBuffer, 0, mvpMatrix1 as Float32Array);
 	// const mvpMatrix2 = getMvpMatrix(size, position2, rotation2, scale2);
@@ -314,24 +299,26 @@ async function run() {
 	// draw(device, pipeline, context, vertexObj, colorObj, depthTexture);
 
 	function animation() {
-		const now = Date.now() / 1000
-		for(let i = 0;i<sceneList.length-1;i++){
-			const obj = sceneList[i]
+		for(let i = 0; i < scene.length - 1; i++){
+			const obj = scene[i]
+			const now = Date.now() / 1000
 			obj.rotation.x = Math.sin(now + i)
 			obj.rotation.y = Math.cos(now + i)
 			const mvpMatrix = getMvpMatrix(size, obj.position, obj.rotation, obj.scale)
+			// update buffer based on offset
+			// device.queue.writeBuffer(
+			//     pipelineObj.mvpBuffer,
+			//     i * 4 * 4 * 4, // offset for each object, no need to 256-byte aligned
+			//     mvpMatrix
+			// )
+			// or save to mvpBuffer first
 			mvpBuffer.set(mvpMatrix, i * 4 * 4)
-		}
-		device.queue.writeBuffer(
-			mvpMatrixBuffer,
-			0,
-			mvpBuffer as Float32Array
-	)
+	}
+	device.queue.writeBuffer(mvpMatrixBuffer, 0, mvpBuffer)
 
-	mvpBuffer
 		
 		
-		draw(device, pipeline, context, vertexObj, colorObj, depthTexture,group);
+		draw(device, pipeline, context, vertexObj, colorObj, depthTexture);
 		requestAnimationFrame(animation);
 	}
 	animation();
@@ -369,7 +356,7 @@ async function run() {
 			format: "depth24plus",
 			usage: GPUTextureUsage.RENDER_ATTACHMENT,
 		});
-		draw(device, pipeline, context, vertexObj, colorObj, newDepthTexture,group);
+		draw(device, pipeline, context, vertexObj, colorObj, newDepthTexture);
 	});
 }
 

@@ -9,11 +9,14 @@
         "sourceMap": true,
         "resolveJsonModule": true,
         "esModuleInterop": true,
+        
         "noEmit": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
         "types": ["vite/client", "@webgpu/types"]
+        // "types": ["@webgpu/types"]
+
     },
     "include": ["src"]
 }

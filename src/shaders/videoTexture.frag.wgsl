@@ -1,8 +1,15 @@
-@group(1) @binding(0) var Sampler: sampler;
-@group(1) @binding(1) var Texture: texture_external;
+// @stage(fragment)
+// fn main(@location(0) fragUV:vec2<f32>,
+//         @location(1) fragPosition:vec4<f32>
+// ) -> @location(0) vec4<f32>{
+//   return fragPosition;
+// }
+// @group(0) @binding(0) var<uniform> color:vec4<f32>;
+@group(1) @binding(0) var Sampler:sampler;
+@group(1) @binding(1) var Texture:texture_external;
 
-@stage(fragment)
-fn main(@location(0) fragUV: vec2<f32>,
-        @location(1) fragPosition: vec4<f32>) -> @location(0) vec4<f32> {
-  return textureSampleLevel(Texture, Sampler, fragUV) * fragPosition;
+@fragment
+fn main(@location(0) fragUV:vec2<f32>,@location(1) fragPosition:vec4<f32>) -> @location(0) vec4<f32> {
+    // var a = color;
+    return textureSampleBaseClampToEdge(Texture,Sampler,fragUV)*fragPosition;
 }

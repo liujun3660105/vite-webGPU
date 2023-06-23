@@ -5,11 +5,11 @@
 //   return fragPosition;
 // }
 // @group(0) @binding(0) var<uniform> color:vec4<f32>;
-@group(1) @binding(0) var Sampler:sampler;
-@group(1) @binding(1) var Texture:texture_2d<f32>;
-
 @fragment
-fn main(@location(0) fragUV:vec2<f32>,@location(1) fragPosition:vec4<f32>) -> @location(0) vec4<f32> {
+fn main(@location(0) fragPosition:vec4<f32>) -> @location(0) vec4<f32> {
     // var a = color;
-    return textureSample(Texture,Sampler,fragUV)*fragPosition;
+    return fragPosition;
+    // return color;
+    // var a = color;
+    // return fragPosition;
 }

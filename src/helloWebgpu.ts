@@ -2,7 +2,8 @@
 async function initWebGPU() {
     try{
         if(!navigator.gpu)
-            throw new Error('Not support WebGPU')
+        throw new Error('Not support WebGPU')
+        console.log("🚀 ~ file: helloWebgpu.ts ~ line 5 ~ initWebGPU ~ navigator.gpu", navigator)
         const adapter = await navigator.gpu.requestAdapter()
         if(!adapter)
             throw new Error('No adapter found')

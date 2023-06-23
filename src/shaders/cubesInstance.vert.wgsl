@@ -1,4 +1,4 @@
-@group(0) @binding(1) var <uniform> mvp:mat4x4<f32>;
+@group(0) @binding(0) var <storage> mvp:array<mat4x4<f32>>;
 
 // struct VertexOutput {
 //   @builtin(position) Position: vec4<f32>,
@@ -10,11 +10,14 @@ struct VertexOutput {
     @location(0) fragPosition: vec4<f32>
 };
 
-@stage(vertex)
-fn main(@location(0) position:vec4<f32>) -> VertexOutput {
+@vertex
+fn main(
+  @location(0) position:vec4<f32>,
+  @builtin(instance_index) index:u32
+  ) -> VertexOutput {
   var out:VertexOutput;
-  out.position = mvp * position;
-  out.fragPosition = position;
+  out.Position = mvp[index] * position;
+  out.fragPosition = 0.5 * (position+vec4<f32>(1.0,1.0,1.0,1.0));
   return out;
 }
 
